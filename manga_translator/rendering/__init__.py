@@ -116,14 +116,11 @@ def resize_regions_to_font_size(img: np.ndarray, text_regions: List['TextBlock']
                         region.center, pts.reshape(1, -1), -region.angle,  
                         to_int=False  
                     ).reshape(-1, 4, 2)  
-                    # 移除边界限制，允许文本超出检测框边界
-                    # dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
-                    # dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
+                    dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
+                    dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
                     dst_points = dst_points.astype(np.int64)
                     single_axis_expanded = True
-                    # logger.debug(f"Successfully expanded horizontal text width: xfact={scale_x:.2f}")  
                 except Exception as e:  
-                    # logger.error(f"Failed to expand horizontal text: {e}")  
                     pass
                     
         if region.vertical:
@@ -149,14 +146,11 @@ def resize_regions_to_font_size(img: np.ndarray, text_regions: List['TextBlock']
                         region.center, pts.reshape(1, -1), -region.angle,  
                         to_int=False  
                     ).reshape(-1, 4, 2)  
-                    # 移除边界限制，允许文本超出检测框边界
-                    # dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
-                    # dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
+                    dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
+                    dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
                     dst_points = dst_points.astype(np.int64)
                     single_axis_expanded = True
-                    # logger.debug(f"Successfully expanded vertical text width: xfact={scale_x:.2f}")  
                 except Exception as e:  
-                    # logger.error(f"Failed to expand vertical text: {e}")  
                     pass
 
         # If single-axis expansion failed, use general scaling
@@ -213,9 +207,8 @@ def resize_regions_to_font_size(img: np.ndarray, text_regions: List['TextBlock']
                     scaled_unrotated_points = np.array(poly.exterior.coords[:4])  
 
                     dst_points = rotate_polygons(region.center, scaled_unrotated_points.reshape(1, -1), -region.angle, to_int=False).reshape(-1, 4, 2)  
-                    # 移除边界限制，允许文本超出检测框边界
-                    # dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
-                    # dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
+                    dst_points[..., 0] = dst_points[..., 0].clip(0, img.shape[1] - 1)  
+                    dst_points[..., 1] = dst_points[..., 1].clip(0, img.shape[0] - 1)  
                     dst_points = dst_points.astype(np.int64)  
                     dst_points = dst_points.reshape((-1, 4, 2))  
                     # logger.debug(f"Finished calculating scaled dst_points.")  
@@ -404,6 +397,18 @@ def render(
     M, _ = cv2.findHomography(src_points, dst_points, cv2.RANSAC, 5.0)
     rgba_region = cv2.warpPerspective(box, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
     x, y, w, h = cv2.boundingRect(dst_points.astype(np.int32))
+    # Clip bounding rect to image bounds
+    x = max(0, x)
+    y = max(0, y)
+    w = min(w, img.shape[1] - x)
+    h = min(h, img.shape[0] - y)
+    if w <= 0 or h <= 0:
+        return img
+    # Create polygon clip mask from dst_points to prevent text overflow
+    clip_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+    cv2.fillConvexPoly(clip_mask, dst_points.astype(np.int32).reshape(-1, 2), 255)
+    # Apply polygon clip mask to the alpha channel
+    rgba_region[:, :, 3] = cv2.bitwise_and(rgba_region[:, :, 3], clip_mask)
     canvas_region = rgba_region[y:y+h, x:x+w, :3]
     mask_region = rgba_region[y:y+h, x:x+w, 3:4].astype(np.float32) / 255.0
     img[y:y+h, x:x+w] = np.clip((img[y:y+h, x:x+w].astype(np.float32) * (1 - mask_region) + canvas_region.astype(np.float32) * mask_region), 0, 255).astype(np.uint8)
