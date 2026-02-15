@@ -282,7 +282,7 @@ docker-compose -f demo/doc/docker-compose-web-with-gpu.yml up
 
 ##### Using AMD ROCm GPU
 
-> **Note:** ROCm only works on Linux. Windows users must use Docker on a Linux host or WSL2.
+> **Note:** ROCm only works on Linux. Windows users must use Docker on a Linux host or WSL2. (Tested on Docker WSL 2 But it still throw error, tested on linux and it worked)
 
 Requirements:
 - Linux host with ROCm 6.0+ installed
@@ -1532,3 +1532,4 @@ GPU server costs are high, please consider supporting us. Thank you very much!
 ## Star Growth Curve
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zyddnys/manga-image-translator&type=Date)](https://star-history.com/#zyddnys/manga-image-translator&Date)
+
