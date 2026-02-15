@@ -322,6 +322,10 @@ Or use the convenience script:
 ```bash
 ./run_rocm.sh ./image_sample ./output
 ```
+For Personal Use:
+```bash
+source $(conda info --base)/etc/profile.d/conda.sh && conda activate manga_translator_amd && export HSA_OVERRIDE_GFX_VERSION=11.0.0 && python -m manga_translator -v --use-gpu local --config-file test_config.json -i "/app/<targetFolder>" -o "/app/<targetFolder>"
+```
 
 #### Use as CLI
 
@@ -1532,4 +1536,5 @@ GPU server costs are high, please consider supporting us. Thank you very much!
 ## Star Growth Curve
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zyddnys/manga-image-translator&type=Date)](https://star-history.com/#zyddnys/manga-image-translator&Date)
+
 
