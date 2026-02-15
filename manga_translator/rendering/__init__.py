@@ -219,7 +219,8 @@ def resize_regions_to_font_size(img: np.ndarray, text_regions: List['TextBlock']
             else:
                 dst_points = region.min_rect
 
-        # Store results and update font size
+        # Always use original detection box — text will be squeezed to fit via homography
+        dst_points = region.min_rect
         dst_points_list.append(dst_points)  
         region.font_size = int(target_font_size)
 
@@ -404,7 +405,7 @@ def render(
     h = min(h, img.shape[0] - y)
     if w <= 0 or h <= 0:
         return img
-    # Create polygon clip mask from dst_points to prevent text overflow
+    # Create polygon clip mask from dst_points to prevent any remaining text overflow
     clip_mask = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
     cv2.fillConvexPoly(clip_mask, dst_points.astype(np.int32).reshape(-1, 2), 255)
     # Apply polygon clip mask to the alpha channel
