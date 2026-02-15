@@ -182,8 +182,8 @@ class Pipeline:
     def _cleanup_memory(self, log_callback):
         log_callback("DEBUG", "Performing memory cleanup...")
         gc.collect()
-        if torch and torch.cuda.is_available():
-            try:
-                torch.cuda.empty_cache()
-            except Exception:
-                pass
+        try:
+            from manga_translator.utils.gpu_utils import clear_gpu_cache
+            clear_gpu_cache()
+        except Exception:
+            pass

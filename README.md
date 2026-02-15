@@ -280,6 +280,49 @@ Or use the compose file (for Web Server + GPU):
 docker-compose -f demo/doc/docker-compose-web-with-gpu.yml up
 ```
 
+##### Using AMD ROCm GPU
+
+> **Note:** ROCm only works on Linux. Windows users must use Docker on a Linux host or WSL2.
+
+Requirements:
+- Linux host with ROCm 6.0+ installed
+- AMD GPU with ROCm support (RX 6000/7000 series, Radeon Pro, Instinct)
+- Docker with ROCm device access
+
+**Build the ROCm Docker image:**
+```bash
+docker build -f Dockerfile.rocm -t manga-image-translator-rocm:latest .
+```
+
+**Run with AMD GPU:**
+```bash
+docker run \
+  --name manga_image_translator_rocm \
+  -p 5003:5003 \
+  --ipc=host \
+  --device=/dev/kfd \
+  --device=/dev/dri \
+  --group-add video \
+  --group-add render \
+  --security-opt seccomp=unconfined \
+  --entrypoint python \
+  --rm \
+  -v ./result:/app/result \
+  -e DEEPSEEK_API_KEY='your-api-key' \
+  manga-image-translator-rocm:latest \
+  server/main.py --verbose --start-instance --host=0.0.0.0 --port=5003 --use-gpu
+```
+
+Or use the compose file:
+```bash
+docker-compose -f docker-compose-rocm.yml up
+```
+
+Or use the convenience script:
+```bash
+./run_rocm.sh ./image_sample ./output
+```
+
 #### Use as CLI
 
 To use Docker via CLI (i.e., Batch Mode):

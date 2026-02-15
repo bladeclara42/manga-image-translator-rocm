@@ -122,11 +122,14 @@ class TranslatorStudioApp(QMainWindow):
         self.detected_vram_gb = 0
         try:
             import torch
-            if torch.cuda.is_available():
+            # Use unified GPU detection for AMD ROCm, NVIDIA CUDA, and Apple MPS
+            from manga_translator.utils.gpu_utils import is_gpu_available, get_device_name
+            if is_gpu_available() and torch.cuda.is_available():
                 # Get total memory in bytes and convert to gigabytes
                 mem_bytes = torch.cuda.get_device_properties(0).total_memory
                 self.detected_vram_gb = mem_bytes / (1024**3)
-                print(f"[INFO] Detected {self.detected_vram_gb:.2f} GB of VRAM.")
+                device_name = get_device_name() or "Unknown GPU"
+                print(f"[INFO] Detected {self.detected_vram_gb:.2f} GB of VRAM on {device_name}.")
         except Exception as e:
             print(f"[WARNING] Could not detect VRAM. Automatic mode will default to Safe. Error: {e}")
 

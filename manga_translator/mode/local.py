@@ -50,15 +50,13 @@ def force_cleanup():
     """强制内存清理"""
     logger.debug('Performing force memory cleanup...')
     import gc
-    import torch
     
     # Python垃圾回收    
     collected = gc.collect()
     
-    # PyTorch缓存清理   
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
+    # PyTorch GPU缓存清理 (supports CUDA, ROCm, and MPS)
+    from manga_translator.utils.gpu_utils import clear_gpu_cache
+    clear_gpu_cache()
     
     # 尝试清理更多内存  
     try:

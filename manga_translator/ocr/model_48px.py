@@ -55,10 +55,11 @@ class Model48pxOCR(OfflineOCR):
         self.device = device
         if (device == 'cuda' or device == 'mps'):
             self.use_gpu = True
+            self.model = self.model.to(device)
+            self.logger.info(f'Model48pxOCR moved to device: {device}')
         else:
             self.use_gpu = False
-        if self.use_gpu:
-            self.model = self.model.to(device)
+            self.logger.info('Model48pxOCR running on CPU')
 
 
     async def _unload(self):

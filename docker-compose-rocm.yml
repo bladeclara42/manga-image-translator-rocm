@@ -1,0 +1,69 @@
+# Docker Compose for AMD ROCm GPU support
+# Usage: docker-compose -f docker-compose-rocm.yml up
+
+services:
+  manga_image_translator_rocm:
+    build:
+      context: .
+      dockerfile: Dockerfile.rocm
+    image: manga-image-translator-rocm:latest
+    container_name: manga_image_translator_rocm
+    entrypoint: python
+    command: server/main.py --verbose --start-instance --host=0.0.0.0 --port=5003 --use-gpu
+    volumes:
+      - ./result:/app/result
+      - ./image_sample:/app/image_sample
+      - ./server/main.py:/app/server/main.py
+      - ./server/instance.py:/app/server/instance.py
+    ports:
+      - "5003:5003"
+    ipc: host
+    # AMD GPU device access
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      # ROCm settings
+      HSA_OVERRIDE_GFX_VERSION: "11.0.0"
+      
+      # DeepSeek API (using provided test key)
+      DEEPSEEK_API_KEY: 'sk-66138ac0c4594b3eae7b363624d281fb'
+      DEEPSEEK_API_BASE: 'https://api.deepseek.com'
+      DEEPSEEK_MODEL: 'deepseek-chat'
+      
+      # OpenAI/ChatGPT (optional)
+      OPENAI_API_KEY: ''
+      OPENAI_API_BASE: ''
+      OPENAI_MODEL: ''
+      OPENAI_HTTP_PROXY: ''
+      
+      # Glossary
+      OPENAI_GLOSSARY_PATH: './dict/mit_glossary.txt'
+      
+      # Other translators (optional)
+      DEEPL_AUTH_KEY: ''
+      BAIDU_APP_ID: ''
+      BAIDU_SECRET_KEY: ''
+      YOUDAO_APP_KEY: ''
+      YOUDAO_SECRET_KEY: ''
+      GROQ_API_KEY: ''
+      GROQ_MODEL: 'mixtral-8x7b-32768'
+      CAIYUN_TOKEN: ''
+      GEMINI_API_KEY: ''
+      GEMINI_MODEL: 'gemini-1.5-flash-002'
+      
+      # Sakura
+      SAKURA_API_BASE: 'http://127.0.0.1:8080/v1'
+      SAKURA_VERSION: '0.9'
+      SAKURA_DICT_PATH: './sakura_dict.txt'
+      
+      # Custom OpenAI compatible API
+      CUSTOM_OPENAI_API_KEY: 'ollama'
+      CUSTOM_OPENAI_API_BASE: 'http://localhost:11434/v1'
+      CUSTOM_OPENAI_MODEL: ''
+      CUSTOM_OPENAI_MODEL_CONF: ''

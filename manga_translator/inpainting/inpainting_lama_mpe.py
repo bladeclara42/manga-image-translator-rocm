@@ -134,6 +134,9 @@ class LamaLargeInpainter(LamaMPEInpainter):
         self.device = device
         if device.startswith('cuda') or device == 'mps':
             self.model.to(device)
+            self.logger.info(f'LamaLargeInpainter moved to device: {device}')
+        else:
+            self.logger.info('LamaLargeInpainter running on CPU')
 
 
 

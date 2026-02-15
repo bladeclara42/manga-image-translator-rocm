@@ -285,16 +285,18 @@ class MangaTranslator:
             self.batch_concurrent = False
             
         self.ignore_errors = params.get('ignore_errors', False)
-        # check mps for apple silicon or cuda for nvidia
-        device = 'mps' if torch.backends.mps.is_available() else 'cuda'
-        self.device = device if params.get('use_gpu', False) else 'cpu'
+        # Use unified GPU detection for AMD ROCm, NVIDIA CUDA, and Apple MPS
+        from .utils.gpu_utils import get_device, check_gpu_requirements, print_gpu_info
+        use_gpu = params.get('use_gpu', False)
+        self.device = get_device(use_gpu)
         self._gpu_limited_memory = params.get('use_gpu_limited', False)
         if self._gpu_limited_memory and not self.using_gpu:
-            self.device = device
-        if self.using_gpu and ( not torch.cuda.is_available() and not torch.backends.mps.is_available()):
-            raise Exception(
-                'CUDA or Metal compatible device could not be found in torch whilst --use-gpu args was set.\n'
-                'Is the correct pytorch version installed? (See https://pytorch.org/)')
+            self.device = get_device(True)  # Enable GPU for limited mode
+        if use_gpu:
+            success, error_msg = check_gpu_requirements(use_gpu)
+            if not success:
+                raise Exception(error_msg)
+            print_gpu_info()  # Log GPU info at startup
         if params.get('model_dir'):
             ModelWrapper._MODEL_DIR = params.get('model_dir')
         #todo: fix why is kernel size loaded in the constructor
@@ -707,8 +709,8 @@ class MangaTranslator:
                 await unload_upscaling(model)
             case 'translation':
                 await unload_translation(model)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()  # empty CUDA cache
+        from .utils.gpu_utils import clear_gpu_cache
+        clear_gpu_cache()  # Clear GPU cache (supports CUDA, ROCm, MPS)
 
     # Background models cleanup job.
     async def _detector_cleanup_job(self):
@@ -1498,8 +1500,8 @@ class MangaTranslator:
                         logger.warning(f'High memory usage during pre-processing: {memory_percent:.1f}%')
                         import gc
                         gc.collect()
-                        if torch.cuda.is_available():
-                            torch.cuda.empty_cache()
+                        from .utils.gpu_utils import clear_gpu_cache
+                        clear_gpu_cache()
                 except ImportError:
                     pass  # psutil 不可用时忽略
                 except Exception as e:
@@ -1535,8 +1537,8 @@ class MangaTranslator:
                     # 强制清理
                     import gc
                     gc.collect()
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
+                    from .utils.gpu_utils import clear_gpu_cache
+                    clear_gpu_cache()
                     
                     # 重新设置图片上下文
                     self._set_image_context(recovery_config, image)
@@ -1608,8 +1610,8 @@ class MangaTranslator:
                     # 每页翻译后都清理内存
                     import gc
                     gc.collect()
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
+                    from .utils.gpu_utils import clear_gpu_cache
+                    clear_gpu_cache()
                         
                 except Exception as individual_error:
                     logger.error(f'Individual page translation failed: {individual_error}')
@@ -2004,8 +2006,8 @@ class MangaTranslator:
             # 强制垃圾回收以释放内存
             import gc
             gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            from .utils.gpu_utils import clear_gpu_cache
+            clear_gpu_cache()
                 
         return results
 

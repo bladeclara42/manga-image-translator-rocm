@@ -2,7 +2,7 @@ import os
 import gc
 import pandas as pd
 import numpy as np
-from onnxruntime import InferenceSession
+import onnxruntime as ort
 from typing import Tuple, List, Dict
 from io import BytesIO
 from PIL import Image
@@ -11,6 +11,31 @@ import cv2
 from pathlib import Path
 
 from tqdm import tqdm
+
+
+def get_onnx_providers():
+    """
+    Get available ONNX Runtime execution providers.
+    Prioritizes: ROCm (MIGraphX) > ROCm > CUDA > CPU
+    """
+    available = ort.get_available_providers()
+    providers = []
+    
+    # Check for AMD ROCm providers first
+    if 'MIGraphXExecutionProvider' in available:
+        providers.append('MIGraphXExecutionProvider')
+    if 'ROCMExecutionProvider' in available:
+        providers.append('ROCMExecutionProvider')
+    
+    # Then NVIDIA CUDA
+    if 'CUDAExecutionProvider' in available:
+        providers.append('CUDAExecutionProvider')
+    
+    # Always include CPU as fallback
+    providers.append('CPUExecutionProvider')
+    
+    return providers
+
 
 def make_square(img, target_size):
     old_size = img.shape[:2]
@@ -39,7 +64,9 @@ def smart_resize(img, size):
 
 class Tagger :
     def __init__(self, filename) -> None:
-        self.model = InferenceSession(filename, providers=['CUDAExecutionProvider'])
+        # Auto-detect GPU provider (supports ROCm and CUDA)
+        providers = get_onnx_providers()
+        self.model = ort.InferenceSession(filename, providers=providers)
         [root, _] = os.path.split(filename)
         self.tags = pd.read_csv(os.path.join(root, 'selected_tags.csv') if root else 'selected_tags.csv')
         _, self.height, _, _ = self.model.get_inputs()[0].shape

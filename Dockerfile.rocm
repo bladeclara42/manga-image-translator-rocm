@@ -1,0 +1,59 @@
+# AMD ROCm Dockerfile for manga-image-translator
+# This Dockerfile builds the project with AMD GPU support using ROCm
+# Based on pytorch/rocm official image
+
+FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    g++ \
+    wget \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    gimp \
+    libvulkan1 \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt /app/requirements.txt
+
+# Create ROCm-specific requirements by modifying the base requirements
+# Install base requirements (excluding ctranslate2 and onnxruntime which need special versions)
+# Also filter out comments (#) and empty lines
+RUN grep -v -E '^(ctranslate2|onnxruntime|#|$)' /app/requirements.txt > /tmp/reqs.txt && \
+    pip install --no-cache-dir -r /tmp/reqs.txt && \
+    rm /tmp/reqs.txt
+
+# Install CTranslate2
+# Note: The ROCm fork (https://github.com/sssshhhhhh/CTranslate2) only provides Windows wheels.
+# Using standard CTranslate2 (CPU) for translation. PyTorch ROCm still accelerates other operations.
+RUN pip install --no-cache-dir ctranslate2
+
+# Install ONNX Runtime with ROCm/MIGraphX support
+# For ROCm 6.x, use onnxruntime-rocm
+RUN pip install --no-cache-dir onnxruntime-rocm==1.22.2.post1
+
+# Copy application code
+COPY . /app
+
+# Prepare models (download during build)
+RUN python -u docker_prepare.py --continue-on-error || true
+
+# Clean up temp files
+RUN rm -rf /tmp && mkdir /tmp && chmod 1777 /tmp
+
+# Add /app to Python module path
+ENV PYTHONPATH="/app"
+
+# Set ROCm-specific environment variables
+ENV HSA_OVERRIDE_GFX_VERSION="11.0.0"
+ENV PYTORCH_ROCM_ARCH="gfx1100;gfx1030;gfx900;gfx906;gfx908;gfx90a;gfx940;gfx941;gfx942"
+
+WORKDIR /app
+
+ENTRYPOINT ["python", "-m", "manga_translator"]

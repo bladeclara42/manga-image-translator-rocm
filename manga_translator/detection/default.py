@@ -47,6 +47,9 @@ class DefaultDetector(OfflineDetector):
         self.device = device
         if device == 'cuda' or device == 'mps':
             self.model = self.model.to(self.device)
+            self.logger.info(f'DefaultDetector moved to device: {device}')
+        else:
+            self.logger.info('DefaultDetector running on CPU')
         global MODEL
         MODEL = self.model
 
@@ -61,6 +64,7 @@ class DefaultDetector(OfflineDetector):
 
         if db is None:
             # rearrangement is not required, fallback to default forward
+            self.logger.info('Performing CPU-intensive bilateralFilter (this may take a while)...')
             img_resized, target_ratio, _, pad_w, pad_h = imgproc.resize_aspect_ratio(cv2.bilateralFilter(image, 17, 80, 80), detect_size, cv2.INTER_LINEAR, mag_ratio = 1)
             img_resized_h, img_resized_w = img_resized.shape[:2]
             ratio_h = ratio_w = 1 / target_ratio
